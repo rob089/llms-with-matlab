@@ -1,4 +1,4 @@
-function [text, message, response] = callOllamaChatAPI(model, messages, nvp)
+function [text, message, response] = callOllamaChatAPI(model, messages, functions, nvp)
 % This function is undocumented and will change in a future release
 
 %callOllamaChatAPI Calls the Ollama™ chat completions API.
@@ -23,10 +23,13 @@ function [text, message, response] = callOllamaChatAPI(model, messages, nvp)
 %   [text, message] = llms.internal.callOllamaChatAPI(model, messages)
 
 %   Copyright 2023-2024 The MathWorks, Inc.
+% Edited 2024 R. Schregle
 
 arguments
     model
     messages
+    functions
+    nvp.ToolChoice
     nvp.Temperature
     nvp.TopP
     nvp.MinP
@@ -52,7 +55,7 @@ if isscalar(nvp.StopSequences)
     nvp.StopSequences = [nvp.StopSequences, nvp.StopSequences];
 end
 
-parameters = buildParametersCall(model, messages, nvp);
+parameters = buildParametersCall(model, messages, functions, nvp);
 
 [response, streamedText] = llms.internal.sendRequestWrapper(parameters,[],URL,nvp.TimeOut,nvp.StreamFun);
 
@@ -65,15 +68,30 @@ if response.StatusCode=="OK"
     else
         message = struct("role", "assistant", ...
             "content", streamedText);
+        %TODO 
     end
-    text = string(message.content);
+    if isfield(message, "tool_calls")
+        text = "";
+        for i = 1:numel(message.tool_calls)
+            if ~isfield(message.tool_calls(i), "id")
+                message.tool_calls(i).id = "call_" + string(response.Body.Data.created_at); % Ollama doesnt return ID but later checks expect this
+            end
+            if ~isfield(message.tool_calls(i), "type")
+                message.tool_calls(i).type = "function"; % Ollama doesnt return type but later checks expect this
+            end
+        
+            message.tool_calls(i).function.arguments = jsonencode(message.tool_calls(i).function.arguments); % Ollama returns struct already but OpenAI doesnt
+        end
+    else
+        text = string(message.content);
+    end
 else
     text = "";
     message = struct();
 end
 end
 
-function parameters = buildParametersCall(model, messages, nvp)
+function parameters = buildParametersCall(model, messages, functions, nvp)
 % Builds a struct in the format that is expected by the API, combining
 % MESSAGES, FUNCTIONS and parameters in NVP.
 
@@ -82,6 +100,14 @@ parameters.model = model;
 parameters.messages = messages;
 
 parameters.stream = ~isempty(nvp.StreamFun);
+
+if ~isempty(functions)
+    parameters.tools = functions;
+end
+
+if ~isempty(nvp.ToolChoice)
+    parameters.tool_choice = nvp.ToolChoice;
+end
 
 options = struct;
 if ~isempty(nvp.Seed)

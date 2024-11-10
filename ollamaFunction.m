@@ -1,27 +1,32 @@
-classdef (Sealed) openAIFunction
-%openAIFunction   Define a function
+classdef ollamaFunction
+%ollamaFunction   Define a function
 %
-%   FUNC = openAIFunction(NAME, DESCRIPTION) creates an open AI function
+%   FUNC = ollamaFunction(NAME, DESCRIPTION) creates an Ollama function
 %   object with the specified name and description.
 %
-%   openAIFunction Functions:
-%       openAIFunction - Define a function.
+%   ollamaFunction Functions:
+%       ollamaFunction - Define a function.
 %       addParameter   - Add parameter to the function.
 %
-%   openAIFunction Properties:
+%   ollamaFunction Properties:
 %       FunctionName   - Name of the function.
 %       Description    - Description of the function.
 %       Parameters     - Parameters of function.
 %
 %   Example:
-%     % Create an OpenAI function object
-%     func = openAIFunction("editDistance", "Find edit distance between two strings or documents");
+%     % Create an Ollama function object
+%     func = ollamaFunction("editDistance", "Find edit distance between two strings or documents");
 %
 %     % Add two parameters with type and description
 %     func = addParameter(func, "str1", type="string", description="Source string.");
 %     func = addParameter(func, "str2", type="string", description="Target string.");
 
-% Copyright 2023 The MathWorks, Inc.
+% Created 2024 R. Schregle
+% Originated of openAIFunction with Copyright 2023 The MathWorks, Inc.
+    
+    properties
+        Parameters = struct()
+    end
 
     properties(SetAccess=private)
         %FUNCTIONNAME   Name of the function.
@@ -31,11 +36,11 @@ classdef (Sealed) openAIFunction
         Description
 
         %PARAMETERS   Parameters of function.
-        Parameters = struct()
+        
     end
 
     methods
-        function this = openAIFunction(name, description)
+        function this = ollamaFunction(name, description)
             arguments
                 name (1,1) {mustBeNonzeroLengthText}
                 description {llms.utils.mustBeTextOrEmpty} = []
@@ -61,9 +66,12 @@ classdef (Sealed) openAIFunction
             %   FCN = addParameter(__,RequiredParameter=TF), specifies
             %   if the parameter is a required parameter.
             %
+            %   FCN = addParameter(__,type="array", itemsType="number", minItems=X, maxItems=X), 
+            %   specifies the size of the 1D-array.
+            %
             %   Example:
-            %   % Create an OpenAI function object
-            %   f = openAIFunction("editDistance", "Find edit distance between two strings or documents");
+            %   % Create an Ollama function object
+            %   f = ollamaFunction("editDistance", "Find edit distance between two strings or documents");
             %
             %   % Add two parameters with type and description
             %   f = addParameter(f,"str1","type","string","description","Source string.");
@@ -71,7 +79,7 @@ classdef (Sealed) openAIFunction
 
 
             arguments
-                this (1,1) openAIFunction
+                this (1,1) ollamaFunction
                 parameterName (1,1) {mustBeNonzeroLengthText, mustBeValidVariableName}
             end
             arguments(Repeating)
@@ -96,6 +104,7 @@ classdef (Sealed) openAIFunction
             if ~isempty(propertyName)
                 for i=1:length(propertyName)
                     properties.(propertyName{i}) = propertyValue{i};
+
                 end
             end
 
@@ -141,6 +150,12 @@ classdef (Sealed) openAIFunction
 
                 % "required" should not be a property when sending to the api
                 parameterStruct = rmfield(parameterStruct,"required");
+
+                % "array" need "items"
+                % if isfield(parameterStruct, "type") && parameterStruct.type == "array"
+                %     parameterStruct.items = struct();
+                %     parameterStruct.items.type
+                % end
 
                 % enum needs to be encoded as array
                 if isfield(parameterStruct, "enum") && numel(parameterStruct.enum)==1

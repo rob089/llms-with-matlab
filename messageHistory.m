@@ -15,6 +15,7 @@ classdef (Sealed) messageHistory
     %       Messages                 - Messages in the conversation history.
 
     % Copyright 2023-2024 The MathWorks, Inc.
+    % Edited 2024 R. Schregle
 
     properties(SetAccess=private)
         %MESSAGES - Messages in the conversation history.
@@ -22,7 +23,7 @@ classdef (Sealed) messageHistory
     end
     
     methods
-        function this = addSystemMessage(this, name, content)
+        function this = addSystemMessage(this, content, nvp)
             %addSystemMessage   Add system message.
             %
             %   MESSAGES = addSystemMessage(MESSAGES, NAME, CONTENT) adds a system
@@ -40,12 +41,17 @@ classdef (Sealed) messageHistory
             %   messages = addSystemMessage(messages, "example_assistant", "O céu está lindo hoje.");
 
             arguments
-                this (1,1) messageHistory 
-                name {mustBeNonzeroLengthTextScalar}
-                content {mustBeNonzeroLengthTextScalar}
+                this        (1,1) messageHistory 
+                content     {mustBeNonzeroLengthTextScalar}
+                nvp.Name    {mustBeNonzeroLengthTextScalar}
             end
 
-            newMessage = struct("role", "system", "name", string(name), "content", string(content));
+            if isfield(nvp,"Name")            
+                newMessage = struct("role", "system", "name", string(name), "content", string(content));
+            else
+                newMessage = struct("role", "system", "content", string(content));
+            end
+            
             this.Messages{end+1} = newMessage;
         end
 
